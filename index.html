@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>KPIグラフ - 問い合わせ総数</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      font-family: "Meiryo", "Yu Gothic", sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      font-size: 18px;
+      margin-bottom: 30px;
+    }
+    .chart-container {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 24px;
+      margin-bottom: 40px;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .chart-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #222;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #1a73e8;
+    }
+    canvas {
+      max-height: 400px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>KPIグラフ（2025年4月〜2026年3月）</h1>
+
+<!-- グラフ① -->
+<div class="chart-container">
+  <div class="chart-title">① 問い合わせ総数（件数）</div>
+  <canvas id="chart1"></canvas>
+</div>
+
+<!-- グラフ② -->
+<div class="chart-container">
+  <div class="chart-title">② 問い合わせ総数比率（%）</div>
+  <canvas id="chart2"></canvas>
+</div>
+
+<script>
+const labels = ['Apr-25','May-25','Jun-25','Jul-25','Aug-25','Sep-25','Oct-25','Nov-25','Dec-25','Jan-26','Feb-26','Mar-26'];
+
+const rawData = {
+  '電話 本社':           [737, 886, 963, 1027, 801, 960, 776, 641, 672, 685, 723, 843],
+  '電話 EV専用ホットライン': [93,  101, 111,  106, 196, 181, 273, 291, 286, 313, 263, 340],
+  'メディア管理メール':      [44,   60,  73,   51,  59,  64,  55,  48,  69,  76,  68,  79],
+  'メディア管理WEB':        [423, 382, 550,  578, 571, 638, 468, 514, 510, 605, 600, 664],
+};
+
+const colors = {
+  '電話 本社':           { bg: 'rgba(26,115,232,0.85)',  border: '#1a73e8' },
+  '電話 EV専用ホットライン': { bg: 'rgba(251,188,5,0.85)',   border: '#fbbc05' },
+  'メディア管理メール':      { bg: 'rgba(52,168,83,0.85)',   border: '#34a853' },
+  'メディア管理WEB':        { bg: 'rgba(234,67,53,0.85)',   border: '#ea4335' },
+};
+
+// ① 件数グラフ
+const datasets1 = Object.entries(rawData).map(([name, data]) => ({
+  label: name,
+  data: data,
+  backgroundColor: colors[name].bg,
+  borderColor: colors[name].border,
+  borderWidth: 1,
+}));
+
+// 各月の合計値を算出
+const seriesNames0 = Object.keys(rawData);
+const totals1 = labels.map((_, i) =>
+  seriesNames0.reduce((sum, name) => sum + rawData[name][i], 0)
+);
+
+// 棒グラフ上に合計値を描画するカスタムプラグイン
+const totalLabelPlugin = {
+  id: 'totalLabel',
+  afterDatasetsDraw(chart) {
+    const { ctx, scales: { x, y } } = chart;
+    ctx.save();
+    ctx.font = 'bold 12px "Meiryo", sans-serif';
+    ctx.fillStyle = '#333';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    chart.data.labels.forEach((_, i) => {
+      const total = chart.data.datasets.reduce((s, ds, di) =>
+        s + (chart.isDatasetVisible(di) ? (ds.data[i] || 0) : 0), 0);
+      const xPos = x.getPixelForValue(i);
+      const yPos = y.getPixelForValue(total);
+      ctx.fillText(total.toLocaleString(), xPos, yPos - 4);
+    });
+    ctx.restore();
+  }
+};
+
+new Chart(document.getElementById('chart1'), {
+  type: 'bar',
+  data: { labels, datasets: datasets1 },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom' },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}件`
+        }
+      }
+    },
+    scales: {
+      x: { stacked: true },
+      y: {
+        stacked: true,
+        min: 0,
+        max: 2000,
+        ticks: {
+          stepSize: 500,
+          callback: v => v.toLocaleString() + '件'
+        },
+        title: { display: true, text: '件数' }
+      }
+    }
+  },
+  plugins: [totalLabelPlugin]
+});
+
+// ② 比率グラフ（月次合計で割って%算出）
+const seriesNames = Object.keys(rawData);
+const ratioData = {};
+seriesNames.forEach(name => { ratioData[name] = []; });
+
+for (let i = 0; i < labels.length; i++) {
+  const total = seriesNames.reduce((sum, name) => sum + rawData[name][i], 0);
+  seriesNames.forEach(name => {
+    ratioData[name].push(Math.round(rawData[name][i] / total * 1000) / 10);
+  });
+}
+
+const datasets2 = seriesNames.map(name => ({
+  label: name,
+  data: ratioData[name],
+  backgroundColor: colors[name].bg,
+  borderColor: colors[name].border,
+  borderWidth: 1,
+}));
+
+new Chart(document.getElementById('chart2'), {
+  type: 'bar',
+  data: { labels, datasets: datasets2 },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom' },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%`
+        }
+      }
+    },
+    scales: {
+      x: { stacked: true },
+      y: {
+        stacked: true,
+        min: 0,
+        max: 100,
+        ticks: {
+          stepSize: 20,
+          callback: v => v + '%'
+        },
+        title: { display: true, text: '比率 (%)' }
+      }
+    }
+  }
+});
+</script>
+
+</body>
+</html>
