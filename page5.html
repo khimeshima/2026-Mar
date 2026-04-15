@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>KPIグラフ5 - EV充電・シナリオ活用</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      font-family: "Meiryo", "Yu Gothic", sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      font-size: 18px;
+      margin-bottom: 30px;
+    }
+    .chart-container {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 24px;
+      margin-bottom: 40px;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .chart-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #222;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #1a73e8;
+    }
+    .toggle-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .ev-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      color: #444;
+    }
+    .ev-toggle input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+    canvas {
+      max-height: 400px;
+    }
+    .chart-wrap {
+      position: relative;
+    }
+    .chart-scroll {
+      overflow-x: auto;
+    }
+    .yaxis-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 2;
+      pointer-events: none;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+<h1>KPIグラフ（2025年4月〜2026年3月）</h1>
+
+<!-- グラフ⑪ -->
+<div class="chart-container">
+  <div class="chart-title">⑪ EV案件内訳（電話＋メール＋WEB）</div>
+  <div class="toggle-row">
+    <label class="ev-toggle"><input type="checkbox" id="cb11_0" checked onchange="applyFilters11()"> EV充電器投資 表示</label>
+    <label class="ev-toggle"><input type="checkbox" id="cb11_1" checked onchange="applyFilters11()"> 充電器問合せ/トラブル 表示</label>
+  </div>
+  <div style="position:relative; height:400px;">
+    <canvas id="chart11"></canvas>
+  </div>
+</div>
+
+<!-- グラフ⑫ -->
+<div class="chart-container">
+  <div class="chart-title">⑫ 3月　EV案件問合せ手段</div>
+  <div class="toggle-row">
+    <label class="ev-toggle"><input type="checkbox" id="cb12_0" checked onchange="applyFilters12()"> EV充電器投資 表示</label>
+    <label class="ev-toggle"><input type="checkbox" id="cb12_1" checked onchange="applyFilters12()"> 充電器問合せ/トラブル 表示</label>
+  </div>
+  <canvas id="chart12"></canvas>
+</div>
+
+<!-- グラフ⑬ -->
+<div class="chart-container">
+  <div class="chart-title">⑬ サイネージ案件内訳（電話＋メール＋WEB）</div>
+  <div class="toggle-row">
+    <label class="ev-toggle"><input type="checkbox" id="cb13_0" checked onchange="applyFilters13()"> 役所 表示</label>
+    <label class="ev-toggle"><input type="checkbox" id="cb13_1" checked onchange="applyFilters13()"> サイネージ無料設置 表示</label>
+  </div>
+  <div style="position:relative; height:400px;">
+    <canvas id="chart13"></canvas>
+  </div>
+</div>
+
+<!-- グラフ⑭ -->
+<div class="chart-container">
+  <div class="chart-title">⑭ 3月　サイネージ案件問合せ手段</div>
+  <div class="toggle-row">
+    <label class="ev-toggle"><input type="checkbox" id="cb14_0" checked onchange="applyFilters14()"> 役所 表示</label>
+    <label class="ev-toggle"><input type="checkbox" id="cb14_1" checked onchange="applyFilters14()"> サイネージ無料設置 表示</label>
+  </div>
+  <canvas id="chart14"></canvas>
+</div>
+
+<script>
+// =====================================================
+// 汎用フィルター関数
+// hiddenIndices: 非表示にするインデックスの配列
+// =====================================================
+function applyFilters(chartObj, fullLabels, fullDataValues, hiddenIndices) {
+  const visible = fullLabels.map((_, i) => i).filter(i => !hiddenIndices.includes(i));
+  chartObj.data.labels = visible.map(i => fullLabels[i]);
+  chartObj.data.datasets.forEach((ds, di) => {
+    ds.data = visible.map(i => fullDataValues[di][i]);
+  });
+  chartObj.options.scales.y.max = undefined;
+  chartObj.update();
+}
+
+function applyFilters11() {
+  const h = [];
+  if (!document.getElementById('cb11_0').checked) h.push(0);
+  if (!document.getElementById('cb11_1').checked) h.push(1);
+  applyFilters(chart11, allLabels11, allData11, h);
+}
+function applyFilters12() {
+  const h = [];
+  if (!document.getElementById('cb12_0').checked) h.push(0);
+  if (!document.getElementById('cb12_1').checked) h.push(1);
+  applyFilters(chart12, allLabels12, allData12, h);
+}
+function applyFilters13() {
+  const h = [];
+  if (!document.getElementById('cb13_0').checked) h.push(1); // 役所 → index 1
+  if (!document.getElementById('cb13_1').checked) h.push(0); // サイネージ無料設置 → index 0
+  applyFilters(chart13, allLabels13, allData13, h);
+}
+function applyFilters14() {
+  const h = [];
+  if (!document.getElementById('cb14_0').checked) h.push(1); // 役所 → index 1
+  if (!document.getElementById('cb14_1').checked) h.push(0); // サイネージ無料設置 → index 0
+  applyFilters(chart14, allLabels14, allData14, h);
+}
+
+// =====================================================
+// Y軸固定オーバーレイ プラグイン（⑪⑬用）
+// =====================================================
+const stickyAxisPlugin = {
+  id: 'stickyAxis',
+  afterRender(chart) {
+    const overlay = document.getElementById(chart.canvas.id + '-yaxis');
+    if (!overlay) return;
+    const axisW = Math.ceil(chart.chartArea.left);
+    const chartH = chart.height;
+    overlay.style.width  = axisW + 'px';
+    overlay.style.height = chartH + 'px';
+    overlay.width  = axisW;
+    overlay.height = chartH;
+    const dpr = chart.canvas.width / chart.width;
+    const ctx2 = overlay.getContext('2d');
+    ctx2.fillStyle = 'white';
+    ctx2.fillRect(0, 0, axisW, chartH);
+    ctx2.drawImage(
+      chart.canvas,
+      0, 0, axisW * dpr, chartH * dpr,
+      0, 0, axisW, chartH
+    );
+  }
+};
+
+// =====================================================
+// 積み上げ合計ラベル プラグイン（⑫⑭用）
+// =====================================================
+function makeTotalPlugin(id) {
+  return {
+    id,
+    afterDatasetsDraw(chart) {
+      const { ctx, scales: { x, y } } = chart;
+      ctx.save();
+      ctx.font = 'bold 11px "Meiryo", sans-serif';
+      ctx.fillStyle = '#333';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      chart.data.labels.forEach((_, i) => {
+        const total = chart.data.datasets.reduce((s, ds, di) =>
+          s + (chart.isDatasetVisible(di) ? (ds.data[i] || 0) : 0), 0);
+        if (total > 0) {
+          ctx.fillText(total.toLocaleString(), x.getPixelForValue(i), y.getPixelForValue(total) - 4);
+        }
+      });
+      ctx.restore();
+    }
+  };
+}
+
+// =====================================================
+// チャネルカラー（⑫⑭用）
+// =====================================================
+const channelColor = {
+  '電話　本社':            { bg: 'rgba(26,115,232,0.85)',  bd: '#1a73e8' },
+  '電話　EVホットライン':  { bg: 'rgba(52,168,83,0.85)',   bd: '#34a853' },
+  'メール':                { bg: 'rgba(234,67,53,0.85)',   bd: '#ea4335' },
+  'WEB':                  { bg: 'rgba(251,188,4,0.85)',   bd: '#fbbc04' },
+};
+
+// =====================================================
+// グラフ⑪：EV充電回数 月次推移（カテゴリ×月 グループ棒）
+// =====================================================
+const allLabels11 = ['EV充電器投資', '充電器問合せ/トラブル', 'EV充電器無料設置', '消防署', 'その他'];
+
+const monthDefs11 = [
+  { label: '4月',  color: '#222222', data: [212, 115, 11, 18, 22] },
+  { label: '5月',  color: '#222222', data: [266, 138, 28, 39, 32] },
+  { label: '6月',  color: '#222222', data: [252, 150, 27, 56, 35] },
+  { label: '7月',  color: '#222222', data: [347, 143, 28, 47, 46] },
+  { label: '8月',  color: '#222222', data: [279, 237, 33, 40, 18] },
+  { label: '9月',  color: '#222222', data: [351, 229, 17, 57, 26] },
+  { label: '10月', color: '#222222', data: [281, 321, 14, 67, 42] },
+  { label: '11月', color: '#222222', data: [337, 318, 10, 23, 21] },
+  { label: '12月', color: '#222222', data: [355, 317, 18, 13, 26] },
+  { label: '1月',  color: '#222222', data: [373, 346, 22, 30, 27] },
+  { label: '2月',  color: '#222222', data: [399, 292, 15, 14, 19] },
+  { label: '3月',  color: '#FFFF00', data: [446, 383, 29, 29, 22] },
+];
+const allData11 = monthDefs11.map(m => m.data.slice());
+
+const chart11 = new Chart(document.getElementById('chart11'), {
+  type: 'bar',
+  data: {
+    labels: allLabels11.slice(),
+    datasets: monthDefs11.map((m, i) => ({
+      label: m.label,
+      data: allData11[i].slice(),
+      backgroundColor: m.color,
+      borderColor: m.color === '#FFFF00' ? '#000000' : m.color,
+      borderWidth: m.color === '#FFFF00' ? 1 : 0,
+    }))
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', align: 'end', labels: { font: { size: 10 }, boxWidth: 12 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}件` } }
+    },
+    scales: {
+      x: { stacked: false, ticks: { font: { size: 9 }, maxRotation: 30 } },
+      y: { stacked: false, min: 0, ticks: { callback: v => v.toLocaleString() }, title: { display: true, text: '件数' } }
+    }
+  },
+  plugins: []
+});
+
+// =====================================================
+// グラフ⑫：3月 EV充電回数内訳（積み上げ棒）
+// =====================================================
+const allLabels12 = ['EV充電器投資', '充電器問合せ/トラブル', 'EV充電器無料設置', '消防署', 'その他'];
+
+const rawDefs12 = [
+  { name: '電話　本社',           data: [  1,  43,  7, 29, 22] },
+  { name: '電話　EVホットライン', data: [  0, 340,  0,  0,  0] },
+  { name: 'メール',               data: [ 20,   0, 22,  0,  0] },
+  { name: 'WEB',                 data: [425,   0,  0,  0,  0] },
+];
+const allData12 = rawDefs12.map(r => r.data.slice());
+
+const chart12 = new Chart(document.getElementById('chart12'), {
+  type: 'bar',
+  data: {
+    labels: allLabels12.slice(),
+    datasets: rawDefs12.map((r, i) => ({
+      label: r.name,
+      data: allData12[i].slice(),
+      backgroundColor: channelColor[r.name].bg,
+      borderColor:     channelColor[r.name].bd,
+      borderWidth: 0,
+    }))
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom' },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}件` } }
+    },
+    scales: {
+      x: { stacked: true, ticks: { maxRotation: 30 } },
+      y: { stacked: true, min: 0, ticks: { callback: v => v.toLocaleString() }, title: { display: true, text: '件数' } }
+    }
+  },
+  plugins: [makeTotalPlugin('t12')]
+});
+
+// =====================================================
+// グラフ⑬：シナリオ活用回数 月次推移（カテゴリ×月 グループ棒）
+// =====================================================
+const allLabels13 = ['サイネージ無料設置', '役所', 'その他', 'サイネージ投資'];
+
+const monthDefs13 = [
+  { label: '2月',  color: '#222222', data: [17, 30,  8, 0] },
+  { label: '3月',  color: '#FFFF00', data: [36,  7,  3, 0] },
+];
+const allData13 = monthDefs13.map(m => m.data.slice());
+
+const chart13 = new Chart(document.getElementById('chart13'), {
+  type: 'bar',
+  data: {
+    labels: allLabels13.slice(),
+    datasets: monthDefs13.map((m, i) => ({
+      label: m.label,
+      data: allData13[i].slice(),
+      backgroundColor: m.color,
+      borderColor: m.color === '#FFFF00' ? '#000000' : m.color,
+      borderWidth: m.color === '#FFFF00' ? 1 : 0,
+    }))
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', align: 'end', labels: { font: { size: 10 }, boxWidth: 12 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}件` } }
+    },
+    scales: {
+      x: { stacked: false, ticks: { font: { size: 9 }, maxRotation: 30 } },
+      y: { stacked: false, min: 0, ticks: { callback: v => v.toLocaleString() }, title: { display: true, text: '件数' } }
+    }
+  },
+  plugins: []
+});
+
+// =====================================================
+// グラフ⑭：3月 サイネージ案件問合せ手段（積み上げ棒）
+// =====================================================
+const allLabels14 = ['サイネージ無料設置', '役所', 'その他', 'サイネージ投資'];
+
+const rawDefs14 = [
+  { name: '電話　本社', data: [0, 7, 3, 0] },
+  { name: 'メール',     data: [0, 0, 0, 0] },
+  { name: 'WEB',      data: [36, 0, 0, 0] },
+];
+const allData14 = rawDefs14.map(r => r.data.slice());
+
+const chart14 = new Chart(document.getElementById('chart14'), {
+  type: 'bar',
+  data: {
+    labels: allLabels14.slice(),
+    datasets: rawDefs14.map((r, i) => ({
+      label: r.name,
+      data: allData14[i].slice(),
+      backgroundColor: channelColor[r.name].bg,
+      borderColor:     channelColor[r.name].bd,
+      borderWidth: 0,
+    }))
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom' },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}件` } }
+    },
+    scales: {
+      x: { stacked: true, ticks: { maxRotation: 30 } },
+      y: { stacked: true, min: 0, ticks: { callback: v => v.toLocaleString() }, title: { display: true, text: '件数' } }
+    }
+  },
+  plugins: [makeTotalPlugin('t14')]
+});
+</script>
+
+</body>
+</html>
