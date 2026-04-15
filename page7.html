@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>KPIグラフ7 - 折り返し</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      font-family: "Meiryo", "Yu Gothic", sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      font-size: 18px;
+      margin-bottom: 30px;
+    }
+    .chart-container {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 24px;
+      margin-bottom: 40px;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .chart-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #222;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #1a73e8;
+    }
+    .chart-wrap {
+      position: relative;
+    }
+    .chart-scroll {
+      overflow-x: auto;
+    }
+    .yaxis-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 2;
+      pointer-events: none;
+      display: block;
+    }
+    canvas {
+      max-height: 400px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>KPIグラフ（2022年10月〜2026年3月）</h1>
+
+<!-- グラフ⑯ -->
+<div class="chart-container">
+  <div class="chart-title">⑯ 折り返し未対応率</div>
+  <canvas id="chart16"></canvas>
+</div>
+
+<!-- グラフ⑰ -->
+<div class="chart-container">
+  <div class="chart-title">⑰ 3月　折り返し案件内訳</div>
+  <canvas id="chart17"></canvas>
+</div>
+
+<script>
+// =====================================================
+// Y軸固定オーバーレイ プラグイン
+// =====================================================
+const stickyAxisPlugin = {
+  id: 'stickyAxis',
+  afterRender(chart) {
+    const overlay = document.getElementById(chart.canvas.id + '-yaxis');
+    if (!overlay) return;
+    const axisW = Math.ceil(chart.chartArea.left);
+    const chartH = chart.height;
+    overlay.style.width  = axisW + 'px';
+    overlay.style.height = chartH + 'px';
+    overlay.width  = axisW;
+    overlay.height = chartH;
+    const dpr = chart.canvas.width / chart.width;
+    const ctx2 = overlay.getContext('2d');
+    ctx2.fillStyle = 'white';
+    ctx2.fillRect(0, 0, axisW, chartH);
+    ctx2.drawImage(
+      chart.canvas,
+      0, 0, axisW * dpr, chartH * dpr,
+      0, 0, axisW, chartH
+    );
+  }
+};
+
+// =====================================================
+// グラフ⑯ データ：折り返し未対応率（Oct-22〜Mar-26）
+// =====================================================
+const labels16 = [
+  'Oct-22','Nov-22','Dec-22','Jan-23','Feb-23','Mar-23','Apr-23','May-23','Jun-23','Jul-23','Aug-23','Sep-23',
+  'Oct-23','Nov-23','Dec-23','Jan-24','Feb-24','Mar-24','Apr-24','May-24','Jun-24','Jul-24','Aug-24','Sep-24',
+  'Oct-24','Nov-24','Dec-24','Jan-25','Feb-25','Mar-25','Apr-25','May-25','Jun-25','Jul-25','Aug-25','Sep-25',
+  'Oct-25','Nov-25','Dec-25','Jan-26','Feb-26','Mar-26'
+];
+
+const mitaio16 = [4,8,5,11,9,8,9,8,12,11,13,12,23,2,6,8,10,8,5,2,5,3,4,2,3,4,4,7,7,3,4,8,6,7,7,6,3,4,2,2,1,1.016949];
+
+// バー上にラベルを描くプラグイン
+const barLabelPlugin16 = {
+  id: 'barLabel16',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    chart.data.datasets.forEach((ds, di) => {
+      const meta = chart.getDatasetMeta(di);
+      if (meta.hidden) return;
+      meta.data.forEach((bar, i) => {
+        const val = ds.data[i];
+        if (val == null || val === 0) return;
+        ctx.save();
+        ctx.font = '8px "Meiryo", sans-serif';
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(Math.round(val) + '%', bar.x, bar.y - 2);
+        ctx.restore();
+      });
+    });
+  }
+};
+
+new Chart(document.getElementById('chart16'), {
+  type: 'bar',
+  data: {
+    labels: labels16,
+    datasets: [
+      {
+        label: '折り返し未対応率',
+        data: mitaio16,
+        backgroundColor: '#C0392B',
+        borderWidth: 0,
+        barPercentage: 0.9,
+        categoryPercentage: 0.8,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` 折り返し未対応率: ${ctx.parsed.y}%`
+        }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { font: { size: 8 }, maxRotation: 90, autoSkip: false }
+      },
+      y: {
+        min: 0,
+        max: 25,
+        ticks: {
+          stepSize: 5,
+          callback: v => v + '%'
+        },
+        title: { display: true, text: '未対応率 (%)' }
+      }
+    }
+  },
+  plugins: [barLabelPlugin16]
+});
+
+// =====================================================
+// グラフ⑰ データ：3月 折り返し案件内訳
+// =====================================================
+const labels17 = ['wk1', 'wk2', 'wk3', 'wk4', 'wk5', 'Total'];
+
+const kanryo17  = [96, 99, 98, 99, 100, 99];
+const taiochu17 = [1,  0,  1,  0,  0,   0];
+const mitaio17  = [3,  1,  1,  1,  0,   1];
+
+new Chart(document.getElementById('chart17'), {
+  type: 'bar',
+  data: {
+    labels: labels17,
+    datasets: [
+      {
+        label: '対応済',
+        data: kanryo17,
+        backgroundColor: '#2E75B6',
+        borderWidth: 0,
+      },
+      {
+        label: '対応中',
+        data: taiochu17,
+        backgroundColor: '#ED7D31',
+        borderWidth: 0,
+      },
+      {
+        label: '未対応',
+        data: mitaio17,
+        backgroundColor: '#375623',
+        borderWidth: 0,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top',
+        align: 'end',
+        labels: { font: { size: 11 }, boxWidth: 14 }
+      },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}%`
+        }
+      }
+    },
+    scales: {
+      x: { stacked: true },
+      y: {
+        stacked: true,
+        min: 0,
+        max: 100,
+        ticks: {
+          stepSize: 20,
+          callback: v => v + '%'
+        },
+        title: { display: true, text: '比率 (%)' }
+      }
+    }
+  }
+});
+</script>
+
+</body>
+</html>
