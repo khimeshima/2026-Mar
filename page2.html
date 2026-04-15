@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>KPIグラフ2 - 本社電話</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      font-family: "Meiryo", "Yu Gothic", sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      font-size: 18px;
+      margin-bottom: 30px;
+    }
+    .chart-container {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 24px;
+      margin-bottom: 40px;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .chart-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #222;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #1a73e8;
+    }
+    .chart-wrap {
+      position: relative;
+    }
+    .chart-scroll {
+      overflow-x: auto;
+    }
+    .yaxis-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 2;
+      pointer-events: none;
+      display: block;
+    }
+
+    /* ── 切り替えトグル ── */
+    .view-toggle {
+      display: flex;
+      margin-bottom: 14px;
+      width: fit-content;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid #1a73e8;
+    }
+    .view-toggle label {
+      cursor: pointer;
+    }
+    .view-toggle label input[type="radio"] {
+      display: none;
+    }
+    .view-toggle label span {
+      display: block;
+      padding: 6px 20px;
+      font-size: 13px;
+      color: #1a73e8;
+      background: white;
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+    .view-toggle label:has(input:checked) span {
+      background: #1a73e8;
+      color: white;
+    }
+    .view-toggle label:not(:last-child) {
+      border-right: 1px solid #1a73e8;
+    }
+
+    /* ── 前年同月比較：データ種別チェックボックス ── */
+    .data-controls {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 16px;
+      padding: 10px 14px;
+      background: #f0f4ff;
+      border-radius: 6px;
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+    .data-controls .ctrl-label {
+      font-weight: bold;
+      color: #333;
+    }
+    .data-controls label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      color: #333;
+    }
+    .data-controls input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+      accent-color: #1a73e8;
+    }
+
+    /* ── 前年同月比較チャート ── */
+    .yearly-section {
+      margin-bottom: 28px;
+    }
+    .yearly-subtitle {
+      font-size: 13px;
+      font-weight: bold;
+      color: #444;
+      margin-bottom: 8px;
+      padding: 4px 10px;
+      background: #e8f0fe;
+      border-left: 3px solid #1a73e8;
+      border-radius: 0 4px 4px 0;
+    }
+    .yearly-canvas-wrap {
+      position: relative;
+      height: 300px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>KPIグラフ（2022年10月～2026年3月）</h1>
+
+<!-- グラフ③ -->
+<div class="chart-container">
+  <div class="chart-title">③ 全条件・本社電話</div>
+  <div class="chart-wrap">
+    <canvas id="chart3-yaxis" class="yaxis-overlay"></canvas>
+    <div class="chart-scroll">
+      <canvas id="chart3" width="1440" height="400"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- グラフ④ -->
+<div class="chart-container">
+  <div class="chart-title">④ 折り返し必要条件数と購入候補・条件</div>
+
+  <!-- 表示切替 -->
+  <div class="view-toggle">
+    <label>
+      <input type="radio" name="view4" value="monthly" checked onchange="switchView4('monthly')">
+      <span>月次推移</span>
+    </label>
+    <label>
+      <input type="radio" name="view4" value="yearly" onchange="switchView4('yearly')">
+      <span>前年同月比較</span>
+    </label>
+  </div>
+
+  <!-- データ種別チェックボックス（前年同月比較時のみ表示） -->
+  <div id="yearly4-controls" class="data-controls" style="display:none">
+    <span class="ctrl-label">表示データ：</span>
+    <label><input type="checkbox" id="cb4-A" checked onchange="updateYearlyView4()"> 全案件数</label>
+    <label><input type="checkbox" id="cb4-B" checked onchange="updateYearlyView4()"> 折り返し必要案件数</label>
+    <label><input type="checkbox" id="cb4-C" checked onchange="updateYearlyView4()"> 購入問合せ数</label>
+  </div>
+
+  <!-- 月次推移ビュー（現状のまま） -->
+  <div id="view4-monthly">
+    <div class="chart-wrap">
+      <canvas id="chart4-yaxis" class="yaxis-overlay"></canvas>
+      <div class="chart-scroll">
+        <canvas id="chart4" width="1740" height="400"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 前年同月比較ビュー -->
+  <div id="view4-yearly" style="display:none">
+    <div id="sec4-A" class="yearly-section">
+      <div class="yearly-subtitle">全案件数</div>
+      <div class="yearly-canvas-wrap">
+        <canvas id="chart4-yr-A"></canvas>
+      </div>
+    </div>
+    <div id="sec4-B" class="yearly-section">
+      <div class="yearly-subtitle">折り返し必要案件数</div>
+      <div class="yearly-canvas-wrap">
+        <canvas id="chart4-yr-B"></canvas>
+      </div>
+    </div>
+    <div id="sec4-C" class="yearly-section">
+      <div class="yearly-subtitle">購入問合せ数</div>
+      <div class="yearly-canvas-wrap">
+        <canvas id="chart4-yr-C"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- グラフ⑤ -->
+<div class="chart-container">
+  <div class="chart-title">⑤ 全条件に対する折り返し必要条件比率と購入候補比率</div>
+  <div class="chart-wrap">
+    <canvas id="chart5-yaxis" class="yaxis-overlay"></canvas>
+    <div class="chart-scroll">
+      <canvas id="chart5" width="1440" height="400"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+// =====================================================
+// X軸ラベル（Oct-22 ～ Mar-26）
+// =====================================================
+const labels = [
+  'Oct-22','Nov-22','Dec-22','Jan-23','Feb-23','Mar-23','Apr-23','May-23','Jun-23','Jul-23','Aug-23','Sep-23',
+  'Oct-23','Nov-23','Dec-23','Jan-24','Feb-24','Mar-24','Apr-24','May-24','Jun-24','Jul-24','Aug-24','Sep-24',
+  'Oct-24','Nov-24','Dec-24','Jan-25','Feb-25','Mar-25','Apr-25','May-25','Jun-25','Jul-25','Aug-25','Sep-25',
+  'Oct-25','Nov-25','Dec-25','Jan-26','Feb-26','Mar-26'
+];
+
+// =====================================================
+// 月次推移データ（42ヶ月）
+// =====================================================
+const sec1A = [232,231,191,188,217,189,166,205,230,213,220,234,
+               232,209,264,187,234,237,250,247,221,293,260,299,
+               267,344,311,263,286,324,351,454,409,  0,209,401,
+               401,269,253,223,249,276];
+const sec1B = [  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+                 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+                 0,  0,  0,  0,  0,  0, 84,127,225,  0, 71,252,
+               114,136,163,169,242,259];
+const sec1C = [ 56, 69,128,144,152,166,165,178,191,196,155,220,
+               226,175,241,214,239,195,242,244,270,375,316,289,
+               290,327,322,342,310,348,302,305,329,1027,531,307,
+               261,236,256,293,232,308];
+
+const sec2A = [288,300,319,332,369,355,331,383,421,409,375,454,
+               458,384,505,401,473,432,492,491,491,668,576,588,
+               557,671,633,605,596,672,737,886,963,1027,811,960,
+               776,641,672,685,723,843];
+const sec2B = [226,217,234,241,249,225,231,268,311,290,269,342,
+               333,249,342,253,290,268,319,310,294,398,355,395,
+               393,446,422,414,384,447,487,616,662,627,549,658,
+               520,429,457,484,530,595];
+const sec2C = [ 66, 71, 55, 65, 63, 45, 52, 59, 69, 59, 67, 57,
+                70, 38, 56, 37, 40, 27, 31, 40, 33, 47, 46, 51,
+                56, 42, 55, 52, 36, 35, 42, 47, 33, 33, 30, 35,
+                27, 24, 27, 32, 23, 24];
+
+// =====================================================
+// 前年同月比較データ（年×月[Jan..Dec]、データなし=null）
+// =====================================================
+const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// 全案件数
+const sec2A_yr = [
+  [null,null,null,null,null,null,null,null,null, 288, 300, 319], // 2022
+  [ 332, 369, 355, 331, 383, 421, 409, 375, 454, 458, 384, 505], // 2023
+  [ 401, 473, 432, 492, 491, 491, 668, 576, 588, 557, 671, 633], // 2024
+  [ 605, 596, 672, 737, 886, 963,1027, 811, 960, 776, 641, 672], // 2025
+  [ 685, 723, 843,null,null,null,null,null,null,null,null,null]  // 2026
+];
+
+// 折り返し必要案件数
+const sec2B_yr = [
+  [null,null,null,null,null,null,null,null,null, 226, 217, 234],
+  [ 241, 249, 225, 231, 268, 311, 290, 269, 342, 333, 249, 342],
+  [ 253, 290, 268, 319, 310, 294, 398, 355, 395, 393, 446, 422],
+  [ 414, 384, 447, 487, 616, 662, 627, 549, 658, 520, 429, 457],
+  [ 484, 530, 595,null,null,null,null,null,null,null,null,null]
+];
+
+// 購入問合せ数
+const sec2C_yr = [
+  [null,null,null,null,null,null,null,null,null,  66,  71,  55],
+  [  65,  63,  45,  52,  59,  69,  59,  67,  57,  70,  38,  56],
+  [  37,  40,  27,  31,  40,  33,  47,  46,  51,  56,  42,  55],
+  [  52,  36,  35,  42,  47,  33,  33,  30,  35,  27,  24,  27],
+  [  32,  23,  24,null,null,null,null,null,null,null,null,null]
+];
+
+// 年ごとの色
+const yearDefs = [
+  { year: '2022', color: '#1F3864' },
+  { year: '2023', color: '#C55A11' },
+  { year: '2024', color: '#375623' },
+  { year: '2025', color: '#2E75B6' },
+  { year: '2026', color: '#7030A0' }
+];
+
+// =====================================================
+// Y軸固定オーバーレイ プラグイン（月次推移グラフ用）
+// =====================================================
+const stickyAxisPlugin = {
+  id: 'stickyAxis',
+  afterRender(chart) {
+    const overlay = document.getElementById(chart.canvas.id + '-yaxis');
+    if (!overlay) return;
+    const axisW = Math.ceil(chart.chartArea.left);
+    const chartH = chart.height;
+    overlay.style.width  = axisW + 'px';
+    overlay.style.height = chartH + 'px';
+    overlay.width  = axisW;
+    overlay.height = chartH;
+    const dpr = chart.canvas.width / chart.width;
+    const ctx2 = overlay.getContext('2d');
+    ctx2.fillStyle = 'white';
+    ctx2.fillRect(0, 0, axisW, chartH);
+    ctx2.drawImage(
+      chart.canvas,
+      0, 0, axisW * dpr, chartH * dpr,
+      0, 0, axisW,        chartH
+    );
+  }
+};
+
+// =====================================================
+// データラベル描画プラグイン（グループ棒用）
+// =====================================================
+function makeLabelPlugin(id, fmt, fontSize) {
+  return {
+    id,
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((ds, di) => {
+        const meta = chart.getDatasetMeta(di);
+        if (meta.hidden) return;
+        meta.data.forEach((bar, i) => {
+          const text = fmt(ds.data[i]);
+          if (text == null) return;
+          ctx.save();
+          ctx.font = `${fontSize}px "Meiryo", sans-serif`;
+          ctx.fillStyle = '#333';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(text, bar.x, bar.y - 2);
+          ctx.restore();
+        });
+      });
+    }
+  };
+}
+
+// =====================================================
+// グラフ③ 積み上げ合計ラベルプラグイン
+// =====================================================
+const stackTotalPlugin = {
+  id: 'stackTotal',
+  afterDatasetsDraw(chart) {
+    const { ctx, scales: { x, y } } = chart;
+    ctx.save();
+    ctx.font = 'bold 8px "Meiryo", sans-serif';
+    ctx.fillStyle = '#333';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    chart.data.labels.forEach((_, i) => {
+      const total = chart.data.datasets.reduce((s, ds, di) =>
+        s + (chart.isDatasetVisible(di) ? (ds.data[i] || 0) : 0), 0);
+      ctx.fillText(total.toLocaleString(), x.getPixelForValue(i), y.getPixelForValue(total) - 3);
+    });
+    ctx.restore();
+  }
+};
+
+// =====================================================
+// グラフ③（全条件・本社電話）積み上げ棒
+// =====================================================
+new Chart(document.getElementById('chart3'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [
+      { label: '直接手渡し除く本社条件数', data: sec1A, backgroundColor: '#4472C4', borderWidth: 0 },
+      { label: '直接手渡し本社件数',       data: sec1B, backgroundColor: '#00B0F0', borderWidth: 0 },
+      { label: '電話代行業者対応件数',     data: sec1C, backgroundColor: '#ED7D31', borderWidth: 0 },
+    ]
+  },
+  options: {
+    responsive: false,
+    plugins: {
+      legend: { position: 'top', align: 'end', labels: { font: { size: 11 }, boxWidth: 14 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}件` } }
+    },
+    scales: {
+      x: { stacked: true, ticks: { font: { size: 9 }, maxRotation: 90, autoSkip: false } },
+      y: { stacked: true, min: 0, max: 1100, ticks: { stepSize: 100 },
+           title: { display: true, text: '件数' } }
+    }
+  },
+  plugins: [stackTotalPlugin, stickyAxisPlugin]
+});
+
+// =====================================================
+// グラフ④ 月次推移（現状のまま）
+// =====================================================
+new Chart(document.getElementById('chart4'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [
+      { label: '全条件数',           data: sec2A, backgroundColor: '#4472C4', borderWidth: 0 },
+      { label: '折り返し必要条件数', data: sec2B, backgroundColor: '#70AD47', borderWidth: 0 },
+      { label: '購入候補数',         data: sec2C, backgroundColor: '#FFC000', borderWidth: 0 },
+    ]
+  },
+  options: {
+    responsive: false,
+    plugins: {
+      legend: { position: 'top', align: 'end', labels: { font: { size: 11 }, boxWidth: 14 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}件` } }
+    },
+    scales: {
+      x: { stacked: false, ticks: { font: { size: 9 }, maxRotation: 90, autoSkip: false } },
+      y: { stacked: false, min: 0, max: 1050,
+           ticks: { stepSize: 100, callback: v => v <= 1000 ? v : '' },
+           title: { display: true, text: '件数' } }
+    }
+  },
+  plugins: [makeLabelPlugin('lbl4', v => v > 0 ? v : null, 6.5), stickyAxisPlugin]
+});
+
+// =====================================================
+// グラフ⑤（折り返し必要条件比率と購入候補比率）グループ棒
+// =====================================================
+const ratioB = sec2B.map((v, i) => Math.round(v / sec2A[i] * 100));
+const ratioC = sec2C.map((v, i) => Math.round(v / sec2A[i] * 100));
+
+new Chart(document.getElementById('chart5'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [
+      { label: '折り返し必要条件比率', data: ratioB, backgroundColor: '#70AD47', borderWidth: 0 },
+      { label: '購入候補比率',         data: ratioC, backgroundColor: '#FFC000', borderWidth: 0 },
+    ]
+  },
+  options: {
+    responsive: false,
+    plugins: {
+      legend: { position: 'top', align: 'end', labels: { font: { size: 11 }, boxWidth: 14 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}%` } }
+    },
+    scales: {
+      x: { stacked: false, ticks: { font: { size: 9 }, maxRotation: 90, autoSkip: false } },
+      y: { stacked: false, min: 0, max: 100,
+           ticks: { stepSize: 10, callback: v => v + '%' },
+           title: { display: true, text: '比率 (%)' } }
+    }
+  },
+  plugins: [makeLabelPlugin('lbl5', v => v > 0 ? v + '%' : null, 7), stickyAxisPlugin]
+});
+
+// =====================================================
+// グラフ④ 前年同月比較 ─ 初期化・切り替えロジック
+// =====================================================
+let yearlyCharts4 = {};
+let yearlyInitialized = false;
+
+function makeYearlyDatasets(dataByYear) {
+  return yearDefs.map((def, i) => ({
+    label: def.year,
+    data: dataByYear[i],
+    backgroundColor: def.color,
+    borderWidth: 0
+  }));
+}
+
+function initYearlyCharts4() {
+  const configs = [
+    { id: 'chart4-yr-A', data: sec2A_yr, unit: '件数' },
+    { id: 'chart4-yr-B', data: sec2B_yr, unit: '件数' },
+    { id: 'chart4-yr-C', data: sec2C_yr, unit: '件数' },
+  ];
+
+  configs.forEach(cfg => {
+    const canvas = document.getElementById(cfg.id);
+    yearlyCharts4[cfg.id] = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: monthLabels,
+        datasets: makeYearlyDatasets(cfg.data)
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            align: 'end',
+            labels: { font: { size: 11 }, boxWidth: 14 }
+          },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                if (ctx.parsed.y == null) return null;
+                return ` ${ctx.dataset.label}年: ${ctx.parsed.y}件`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { font: { size: 11 } } },
+          y: {
+            min: 0,
+            ticks: { font: { size: 10 } },
+            title: { display: true, text: cfg.unit }
+          }
+        }
+      }
+    });
+  });
+
+  yearlyInitialized = true;
+}
+
+function switchView4(value) {
+  const monthlyView  = document.getElementById('view4-monthly');
+  const yearlyView   = document.getElementById('view4-yearly');
+  const yearlyCtrl   = document.getElementById('yearly4-controls');
+
+  if (value === 'yearly') {
+    monthlyView.style.display = 'none';
+    yearlyView.style.display  = 'block';
+    yearlyCtrl.style.display  = 'flex';
+    if (!yearlyInitialized) {
+      initYearlyCharts4();
+    }
+    updateYearlyView4();
+  } else {
+    monthlyView.style.display = 'block';
+    yearlyView.style.display  = 'none';
+    yearlyCtrl.style.display  = 'none';
+  }
+}
+
+function updateYearlyView4() {
+  const show = {
+    A: document.getElementById('cb4-A').checked,
+    B: document.getElementById('cb4-B').checked,
+    C: document.getElementById('cb4-C').checked
+  };
+  document.getElementById('sec4-A').style.display = show.A ? 'block' : 'none';
+  document.getElementById('sec4-B').style.display = show.B ? 'block' : 'none';
+  document.getElementById('sec4-C').style.display = show.C ? 'block' : 'none';
+}
+</script>
+
+</body>
+</html>
